@@ -1,6 +1,6 @@
 use std::{sync::Arc, thread};
 use serde_json;
-use tiny_http::{ Response, Server, StatusCode, Method, Header};
+use tiny_http::{ Response, Server, StatusCode, Method, Header, };
 use tokio;
 
 mod services;
@@ -20,6 +20,8 @@ async fn main() {
                 let response = Response::from_string("Hello, world!".to_string());
                 let _ = request.respond(response);
             }
+
+            //pega todos os publishers
             (&Method::Get, "/publisher") => {
               let response = services::list_publisher();
               match response {
@@ -34,6 +36,30 @@ async fn main() {
                 } 
               }
             }
+
+            //pega um publisher especifico
+            (&Method::Get, path) if path.starts_with("/publisher/") => {
+
+              let id = request.url().trim_start_matches("/publisher/");
+              let response = services::get_publisher(id);
+
+              match response {
+
+                Ok(value) =>{
+                  let response = Response::from_string(value)
+                  .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                  let _ = request.respond(response);
+                }
+
+                Err(erro) =>{
+                  let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
+                  let _ = request.respond(response);
+                } 
+              }
+
+            }
+
+            // cria um novo publisher
             (&Method::Post, "/publisher") => {
               let publisher: Publisher = serde_json::from_reader(request.as_reader()).unwrap();
 
@@ -49,6 +75,30 @@ async fn main() {
                 } 
               }
             }
+
+            // deleta um publisher
+            (&Method::Delete, path) if path.starts_with("/publisher/") => {
+
+              let id = request.url().trim_start_matches("/publisher/");
+              let response = services::delete_publisher(id);
+
+              match response {
+
+                Ok(value) =>{
+                  let response = Response::from_string(value.to_string())
+                  .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                  
+                  let _ = request.respond(response);
+                }
+
+                Err(erro) =>{
+                  let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
+                  let _ = request.respond(response);
+                } 
+              }
+
+            }
+
             _ => {
                 let response = Response::from_string("404 Not Found".to_string())
                     .with_status_code(StatusCode::from(404));
