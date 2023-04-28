@@ -31,6 +31,21 @@ pub fn create_publisher(publisher:Publisher) -> Result<usize, Box<dyn Error>> {
   }
 }
 
+pub fn update_publisher(id:&str, publisher:Publisher) -> Result<usize, Box<dyn Error>> {
+  let conn = connection::sqlite().unwrap();
+ let query = conn.execute(
+    "UPDATE publishers SET name = ?2, type =?3, gender = ?4, active = ?5 WHERE id = ?1 LIMIT 1",
+    (id, publisher.name, publisher.r#type, publisher.gender, publisher.active),
+  );
+
+  match query {
+    Ok(value) =>
+      Ok(value),
+    Err(erro) =>
+      Err(erro.into()),
+  }
+}
+
 pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
   let conn = connection::sqlite().unwrap();
   
@@ -88,7 +103,7 @@ pub fn list_publisher() -> Result<String, Box<dyn Error>> {
 pub fn delete_publisher(id:&str) -> Result<usize, Box<dyn Error>> {
   
   let conn = connection::sqlite().unwrap();
-  let query = conn.execute("DELETE FROM publishers WHERE id = ? LIMIT 1", &[&id]);
+  let query = conn.execute("DELETE FROM publishers WHERE id = ? LIMIT 1", [&id]);
 
   match query {
     Ok(value) =>

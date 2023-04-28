@@ -44,19 +44,16 @@ async fn main() {
               let response = services::get_publisher(id);
 
               match response {
-
                 Ok(value) =>{
                   let response = Response::from_string(value)
                   .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
                   let _ = request.respond(response);
                 }
-
                 Err(erro) =>{
                   let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
                   let _ = request.respond(response);
                 } 
               }
-
             }
 
             // cria um novo publisher
@@ -91,6 +88,26 @@ async fn main() {
                   let _ = request.respond(response);
                 }
 
+                Err(erro) =>{
+                  let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
+                  let _ = request.respond(response);
+                } 
+              }
+            }
+
+            //atualizar um publisher especifico
+            (&Method::Patch, path) if path.starts_with("/publisher/") => {
+
+              let publisher: Publisher = serde_json::from_reader(request.as_reader()).unwrap();
+              let id = request.url().trim_start_matches("/publisher/");
+              let response = services::update_publisher(id, publisher);
+            
+              match response {
+                Ok(value) =>{
+                  let response = Response::from_string(value.to_string())
+                  .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                  let _ = request.respond(response);
+                }
                 Err(erro) =>{
                   let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
                   let _ = request.respond(response);
