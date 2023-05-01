@@ -8,6 +8,6 @@ pub struct Publisher {
   pub gender: String,
   pub amount: Option<u32>,
   pub active: Option<bool>,
-  pub updated_at: Option<i64>,
-  pub created_at: Option<i64>,
+  pub updated_at: Option<String>,
+  pub created_at: Option<String>,
 }

@@ -115,7 +115,24 @@ async fn main() {
               }
 
             }
+            // cria novas apresentações
+            (&Method::Post, "/presentations?length=") => {
 
+              let length = request.url().trim_start_matches("/presentations?length=");
+
+              // let response = services::create_presentations(length);
+              let response = services::create_presentations("3");
+              match response {
+                Ok(value) =>{
+                  let response = Response::from_string(value.to_string());
+                  let _ = request.respond(response);
+                } 
+                Err(erro) =>{
+                  let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
+                  let _ = request.respond(response);
+                } 
+              }
+            }
             _ => {
                 let response = Response::from_string("404 Not Found".to_string())
                     .with_status_code(StatusCode::from(404));
