@@ -116,12 +116,12 @@ async fn main() {
 
             }
             // cria novas apresentações
-            (&Method::Post, "/presentations?length=") => {
+            (&Method::Post, path) if path.starts_with("/presentations?length=") => {
 
               let length = request.url().trim_start_matches("/presentations?length=");
 
-              // let response = services::create_presentations(length);
-              let response = services::create_presentations("3");
+              let response = services::create_presentations(length);
+              
               match response {
                 Ok(value) =>{
                   let response = Response::from_string(value.to_string());

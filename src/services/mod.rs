@@ -79,26 +79,25 @@ pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
 
 }
 
-fn list_raffled_publisher(id: u8) -> (u8, u32) {
+fn list_raffled_publisher(id: u8) -> (u8, u32){
   
   let (index, item, order) = raffle();
 
   let conn = connection::sqlite().unwrap();
   let publishers: Vec<Publisher> = conn
-  .prepare("SELECT * FROM publishers WHERE active = true AND NOT id = ?3 ORDER BY ?1 ?2 LIMIT 3").unwrap()
-  .query_map([ item, order, id.to_string()], |row| { 
+  .prepare("SELECT * FROM publishers WHERE NOT id = ?3 AND active = 1 ORDER BY ?1, ?2 LIMIT 3").unwrap()
+  .query_map([item, order, id.to_string()], |row| { 
       Ok(Publisher {
-          id: row.get(0)?,
-          name: row.get(1)?,
-          r#type: row.get(2)?,
-          gender: row.get_unwrap(3),
-          amount: row.get_unwrap(4),
-          active: row.get_unwrap(5),
-          updated_at: row.get_unwrap(6),
-          created_at: row.get_unwrap(7),
+        id: row.get(0)?,
+        name: row.get(1)?,
+        r#type: row.get(2)?,
+        gender: row.get_unwrap(3),
+        amount: row.get_unwrap(4),
+        active: row.get_unwrap(5),
+        updated_at: row.get_unwrap(6),
+        created_at: row.get_unwrap(7),
       })
-  }).unwrap()
-  .filter_map(Result::ok)
+  }).unwrap().filter_map(Result::ok)
   .collect();
 
   (publishers[index].id.unwrap(), publishers[index].amount.unwrap())
@@ -145,24 +144,23 @@ pub fn delete_publisher(id:&str) -> Result<usize, Box<dyn Error>> {
 
 //Presentations
 pub fn create_presentations(length:&str) -> Result<String, Box<dyn Error>> {
-  let querys: Vec<Result<usize, String>> = vec![];
+  let mut querys: Vec<Result<usize, String>> = vec![];
   
-  for i in 0..length.parse::<u8>().unwrap() {
+  for _i in 0..length.parse::<u8>().unwrap() {
 
     let main = list_raffled_publisher(0);
     let helper = list_raffled_publisher(main.0);
-
     let conn = connection::sqlite().unwrap();
     let query: Result<usize, rusqlite::Error> = conn.execute(
-      "INSERT INTO presentation (main, helper) VALUES (?1, ?2)",
+      "INSERT INTO presentations (main, helper) VALUES (?1, ?2)",
       (main.0, helper.0),
     );
+    querys.push(query.map_err(|e| e.to_string()));
   }
+
   match serde_json::to_string(&querys) {
     Ok(json) =>  Ok(json),
     Err(erro) =>  Err(erro.into()),
   }
-
-
 
 }
