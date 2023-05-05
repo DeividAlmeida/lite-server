@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, thread};
 use rand::Rng;
 use chrono::Utc;
 use crate::structs::publisher::Publisher;
@@ -18,6 +18,11 @@ fn raffle() -> (usize, String, String) {
 fn get_timestamp() -> String {
   let now = Utc::now();
   now.format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+fn sum_puplisher_amount (publisher:Publisher) -> u32{
+  let new_amout = publisher.amount.unwrap() + 1;
+  new_amout
 }
 
 //Publishers
@@ -43,7 +48,7 @@ pub fn update_publisher(id:&str, publisher:Publisher) -> Result<usize, Box<dyn E
     "UPDATE publishers SET name = ?2, type =?3, gender = ?4, active = ?5, updated_at = ?6 WHERE id = ?1 LIMIT 1",
     (id, publisher.name, publisher.r#type, publisher.gender, publisher.active, now),
   );
-
+  
   match query {
     Ok(value) =>
       Ok(value),
@@ -79,7 +84,7 @@ pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
 
 }
 
-fn list_raffled_publisher(id: u8) -> (u8, u32){
+fn list_raffled_publisher(id: u8) -> Result<Publisher, Box<dyn Error>> {
   
   let (index, item, order) = raffle();
 
@@ -100,7 +105,9 @@ fn list_raffled_publisher(id: u8) -> (u8, u32){
   }).unwrap().filter_map(Result::ok)
   .collect();
 
-  (publishers[index].id.unwrap(), publishers[index].amount.unwrap())
+  
+  Ok(publishers[index].clone())
+  
 
 }
 
@@ -142,19 +149,46 @@ pub fn delete_publisher(id:&str) -> Result<usize, Box<dyn Error>> {
   }
 }
 
+fn update_publisher_amount(id:&str, amount:u32) -> Result<usize, Box<dyn Error>> {
+  let conn = connection::sqlite().unwrap();
+  let now = get_timestamp();
+  let query = conn.execute(
+    "UPDATE publishers SET  amount = ?2, updated_at = ?3 WHERE id = ?1",
+    (id, amount, now),
+  );
+  
+  match query {
+    Ok(value) =>
+      Ok(value),
+    Err(erro) =>
+      Err(erro.into()),
+  }
+}
+
 //Presentations
 pub fn create_presentations(length:&str) -> Result<String, Box<dyn Error>> {
   let mut querys: Vec<Result<usize, String>> = vec![];
+  let conn = connection::sqlite().unwrap();
   
   for _i in 0..length.parse::<u8>().unwrap() {
-
-    let main = list_raffled_publisher(0);
-    let helper = list_raffled_publisher(main.0);
-    let conn = connection::sqlite().unwrap();
+    
+    let main = list_raffled_publisher(0).unwrap();
+    let helper = list_raffled_publisher(main.id.unwrap()).unwrap();
     let query: Result<usize, rusqlite::Error> = conn.execute(
       "INSERT INTO presentations (main, helper) VALUES (?1, ?2)",
-      (main.0, helper.0),
+      (main.id, helper.id),
     );
+    
+    thread::spawn( move || {
+      let new_main_amount = sum_puplisher_amount(main.clone());
+      let _ = update_publisher_amount(&main.id.unwrap().to_string(), new_main_amount);
+    });
+    
+    thread::spawn( move || {
+      let new_helper_amount = sum_puplisher_amount(helper.clone());
+      let _ = update_publisher_amount(&helper.id.unwrap().to_string(), new_helper_amount);
+    });
+
     querys.push(query.map_err(|e| e.to_string()));
   }
 
