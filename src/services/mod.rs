@@ -84,14 +84,15 @@ pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
 
 }
 
-fn list_raffled_publisher(id: u8) -> Result<Publisher, Box<dyn Error>> {
+fn list_raffled_publisher(id: u8, operator:String, gender:Option<String>) -> Result<Publisher, Box<dyn Error>> {
   
   let (index, item, order) = raffle();
 
   let conn = connection::sqlite().unwrap();
+  let query = format!("SELECT * FROM publishers WHERE NOT id = ?3 AND active = 1 AND type {} 2  AND gender = ?4 ORDER BY ?1, ?2 LIMIT 3", operator);
   let publishers: Vec<Publisher> = conn
-  .prepare("SELECT * FROM publishers WHERE NOT id = ?3 AND active = 1 ORDER BY ?1, ?2 LIMIT 3").unwrap()
-  .query_map([item, order, id.to_string()], |row| { 
+  .prepare(&query).unwrap()
+  .query_map([item, order, id.to_string(), gender.unwrap()], |row| { 
       Ok(Publisher {
         id: row.get(0)?,
         name: row.get(1)?,
@@ -172,8 +173,8 @@ pub fn create_presentations(length:&str) -> Result<String, Box<dyn Error>> {
   
   for _i in 0..length.parse::<u8>().unwrap() {
     
-    let main = list_raffled_publisher(0).unwrap();
-    let helper = list_raffled_publisher(main.id.unwrap()).unwrap();
+    let main = list_raffled_publisher(0, ">=".to_owned(), None).unwrap();
+    let helper = list_raffled_publisher(main.id.unwrap(), "<=".to_string(), Some(main.gender.clone().to_string())).unwrap();
     let query: Result<usize, rusqlite::Error> = conn.execute(
       "INSERT INTO presentations (main, helper) VALUES (?1, ?2)",
       (main.id, helper.id),
