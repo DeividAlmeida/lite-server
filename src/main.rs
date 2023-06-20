@@ -6,7 +6,7 @@ use tokio;
 mod services;
 mod structs;
 
-use crate::structs::publisher::Publisher;
+use crate::structs::{publisher::Publisher, request_data::RequestData};
 
 #[tokio::main]
 async fn main() {
@@ -117,6 +117,10 @@ async fn main() {
             }
             // cria novas apresentações
             (&Method::Post, path) if path.starts_with("/presentations?length=") => {
+              
+              let data: RequestData = serde_json::from_reader(request.as_reader()).unwrap();
+//TODO
+              println!("{:?}", data);
 
               let length = request.url().trim_start_matches("/presentations?length=");
 
