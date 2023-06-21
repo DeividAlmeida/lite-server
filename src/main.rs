@@ -115,19 +115,25 @@ async fn main() {
               }
 
             }
+            
             // cria novas apresentações
-            (&Method::Post, path) if path.starts_with("/presentations?length=") => {
-              
-              let data: RequestData = serde_json::from_reader(request.as_reader()).unwrap();
-//TODO
-              println!("{:?}", data);
+            (&Method::Post, path) if path.starts_with("/presentations") => {
+             let data: RequestData = match serde_json::from_reader(request.as_reader()){
+                Ok(value) => value,
+                Err(erro) => {
+                  let response = Response::from_string(erro.to_string()).with_status_code(StatusCode::from(404));
+                  let _ = request.respond(response);
+                  continue;
+                }
+             };
+             
+              let length = data.length;
+              let gender = data.gender.to_string();
 
-              let length = request.url().trim_start_matches("/presentations?length=");
-
-              let response = services::create_presentations(length);
+              let response = services::create_presentations(length, gender);
               
               match response {
-                Ok(value) =>{
+                Ok(value) => {
                   let response = Response::from_string(value.to_string());
                   let _ = request.respond(response);
                 } 
@@ -137,6 +143,7 @@ async fn main() {
                 } 
               }
             }
+
             _ => {
                 let response = Response::from_string("404 Not Found".to_string())
                     .with_status_code(StatusCode::from(404));

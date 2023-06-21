@@ -84,15 +84,15 @@ pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
 
 }
 
-fn list_raffled_publisher(id: u8, operator:String, gender:Option<String>) -> Result<Publisher, Box<dyn Error>> {
+fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Result<Publisher, Box<dyn Error>> {
   
   let (index, item, order) = raffle();
 
   let conn = connection::sqlite().unwrap();
-  let query = format!("SELECT * FROM publishers WHERE NOT id = ?3 AND active = 1 AND type {} 2  AND gender = ?4 ORDER BY ?1, ?2 LIMIT 3 GROUP BY amount ASC", operator);
+  let query = format!("SELECT * FROM publishers WHERE NOT id = ?3 AND active = 1 AND type {} 2  AND gender = ?4  ORDER BY amount ASC, ?1, ?2 LIMIT 3", operator);
   let publishers: Vec<Publisher> = conn
   .prepare(&query).unwrap()
-  .query_map([item, order, id.to_string(), gender.unwrap()], |row| { 
+  .query_map([item, order, id.to_string(), gender], |row| { 
       Ok(Publisher {
         id: row.get(0)?,
         name: row.get(1)?,
@@ -105,10 +105,8 @@ fn list_raffled_publisher(id: u8, operator:String, gender:Option<String>) -> Res
       })
   }).unwrap().filter_map(Result::ok)
   .collect();
-
   
   Ok(publishers[index].clone())
-  
 
 }
 
@@ -167,19 +165,18 @@ fn update_publisher_amount(id:&str, amount:u32) -> Result<usize, Box<dyn Error>>
 }
 
 //Presentations
-pub fn create_presentations(length:&str) -> Result<String, Box<dyn Error>> {
-  let mut querys: Vec<Result<usize, String>> = vec![];
-  let conn = connection::sqlite().unwrap();
+pub fn create_presentations(length:u8, gender:String) -> Result<String, Box<dyn Error>> {
+  let mut presentations : Vec<(Publisher, Publisher)> = vec![];
   
-  for _i in 0..length.parse::<u8>().unwrap() {
+  for _i in 0..length {
     
-    let main = list_raffled_publisher(0, ">=".to_owned(), Some("male".to_string())).unwrap();
-    let helper = list_raffled_publisher(main.id.unwrap(), "<=".to_string(), Some(main.gender.clone().to_string())).unwrap();
-    let query: Result<usize, rusqlite::Error> = conn.execute(
-      "INSERT INTO presentations (main, helper) VALUES (?1, ?2)",
-      (main.id, helper.id),
+    let main = list_raffled_publisher(0, ">=".to_owned(), gender.clone()).unwrap();
+    let helper = list_raffled_publisher(main.id.unwrap(), "<=".to_string(), main.gender.clone().to_string()).unwrap();
+    
+    presentations.push(
+      (main.clone(), helper.clone())
     );
-    
+
     thread::spawn( move || {
       let new_main_amount = sum_puplisher_amount(main.clone());
       let _ = update_publisher_amount(&main.id.unwrap().to_string(), new_main_amount);
@@ -190,10 +187,9 @@ pub fn create_presentations(length:&str) -> Result<String, Box<dyn Error>> {
       let _ = update_publisher_amount(&helper.id.unwrap().to_string(), new_helper_amount);
     });
 
-    querys.push(query.map_err(|e| e.to_string()));
   }
 
-  match serde_json::to_string(&querys) {
+  match serde_json::to_string(&presentations) {
     Ok(json) =>  Ok(json),
     Err(erro) =>  Err(erro.into()),
   }
