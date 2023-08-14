@@ -27,11 +27,14 @@ fn sum_puplisher_amount (publisher:Publisher) -> u32{
 
 //Publishers
 pub fn create_publisher(publisher:Publisher) -> Result<usize, Box<dyn Error>> {
-  let conn = connection::sqlite().unwrap();
+  let conn = connection::connect_sqlite().unwrap();
+  let now = get_timestamp();
   let query = conn.execute(
-    "INSERT INTO publishers (name, type, gender) VALUES (?1, ?2, ?3)",
-    (publisher.name, publisher.r#type, publisher.gender),
+    "INSERT INTO publishers (name, type, gender, updated_at, created_at) VALUES (?1, ?2, ?3, ?4, ?4)",
+    (publisher.name, publisher.r#type, publisher.gender, now),
   );
+
+  connection::disconnect_sqlite(conn).unwrap();
 
   match query {
     Ok(value) =>
@@ -42,12 +45,14 @@ pub fn create_publisher(publisher:Publisher) -> Result<usize, Box<dyn Error>> {
 }
 
 pub fn update_publisher(id:&str, publisher:Publisher) -> Result<usize, Box<dyn Error>> {
-  let conn = connection::sqlite().unwrap();
+  let conn = connection::connect_sqlite().unwrap();
   let now = get_timestamp();
   let query = conn.execute(
-    "UPDATE publishers SET name = ?2, type =?3, gender = ?4, active = ?5, updated_at = ?6 WHERE id = ?1 LIMIT 1",
+    "UPDATE publishers SET name = ?2, type =?3, gender = ?4, active = ?5, updated_at = ?6 WHERE id = ?1",
     (id, publisher.name, publisher.r#type, publisher.gender, publisher.active, now),
   );
+
+  connection::disconnect_sqlite(conn).unwrap();
   
   match query {
     Ok(value) =>
@@ -58,7 +63,7 @@ pub fn update_publisher(id:&str, publisher:Publisher) -> Result<usize, Box<dyn E
 }
 
 pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
-  let conn = connection::sqlite().unwrap();
+  let conn = connection::connect_sqlite().unwrap();
   
   let publisher = conn.query_row(
     "SELECT * FROM publishers WHERE id = ? LIMIT 1",
@@ -77,6 +82,8 @@ pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
     },
   )?;
 
+  connection::disconnect_sqlite(conn).unwrap();
+
   match serde_json::to_string(&publisher) {
     Ok(json) =>  Ok(json),
     Err(erro) =>  Err(erro.into()),
@@ -88,8 +95,8 @@ fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Result<Publ
   
   let (index, item, order) = raffle();
 
-  let conn = connection::sqlite().unwrap();
-  let query = format!("SELECT * FROM publishers WHERE NOT id = ?3 AND active = 1 AND type {} 2  AND gender = ?4  ORDER BY amount ASC, ?1, ?2 LIMIT 3", operator);
+  let conn = connection::connect_sqlite().unwrap();
+  let query = format!("SELECT * FROM publishers WHERE NOT id = ?3 AND type {} 2  AND gender = ?4  ORDER BY amount ASC, ?1, ?2 LIMIT 3", operator);
   let publishers: Vec<Publisher> = conn
   .prepare(&query).unwrap()
   .query_map([item, order, id.to_string(), gender], |row| { 
@@ -105,15 +112,17 @@ fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Result<Publ
       })
   }).unwrap().filter_map(Result::ok)
   .collect();
+
+  connection::disconnect_sqlite(conn).unwrap();
   
   Ok(publishers[index].clone())
 
 }
 
 pub fn list_publisher() -> Result<String, Box<dyn Error>> {
-  let conn = connection::sqlite().unwrap();
+  let conn = connection::connect_sqlite().unwrap();
   let publishers: Vec<Publisher> = conn
-  .prepare("SELECT * FROM publishers WHERE active = true ")?
+  .prepare("SELECT * FROM publishers")?
   .query_map([], |row| { 
       Ok(Publisher {
           id: row.get(0)?,
@@ -129,6 +138,8 @@ pub fn list_publisher() -> Result<String, Box<dyn Error>> {
   .filter_map(Result::ok)
   .collect();
 
+  connection::disconnect_sqlite(conn).unwrap();
+
   match serde_json::to_string(&publishers) {
     Ok(json) =>  Ok(json),
     Err(erro) =>  Err(erro.into()),
@@ -137,8 +148,10 @@ pub fn list_publisher() -> Result<String, Box<dyn Error>> {
 
 pub fn delete_publisher(id:&str) -> Result<usize, Box<dyn Error>> {
   
-  let conn = connection::sqlite().unwrap();
-  let query = conn.execute("DELETE FROM publishers WHERE id = ? LIMIT 1", [&id]);
+  let conn = connection::connect_sqlite().unwrap();
+  let query = conn.execute("DELETE FROM publishers WHERE id = ?", [&id]);
+  
+  connection::disconnect_sqlite(conn).unwrap();
 
   match query {
     Ok(value) =>
@@ -149,7 +162,7 @@ pub fn delete_publisher(id:&str) -> Result<usize, Box<dyn Error>> {
 }
 
 fn update_publisher_amount(id:&str, amount:u32) -> Result<usize, Box<dyn Error>> {
-  let conn = connection::sqlite().unwrap();
+  let conn = connection::connect_sqlite().unwrap();
   let now = get_timestamp();
   let query = conn.execute(
     "UPDATE publishers SET  amount = ?2, updated_at = ?3 WHERE id = ?1",
