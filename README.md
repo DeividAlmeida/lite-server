@@ -23,7 +23,7 @@ O Lite Server suporta as seguintes rotas:
 - GET: `/publisher/:id` - Retorna os detalhes de um publisher específico.
 - POST: `/publisher` - Cria um novo publisher. (Corpo da solicitação: `{ "name":STRING,"type":U8,"gender":STRING }`)
 - DELETE: `/publisher/:id` - Remove um publisher específico.
-- PATCH: `/publisher/:id` - Atualiza um publisher específico. (Corpo da solicitação: `{ "name":STRING,"type":U8,"gender":STRING }`)
+- PATCH: `/publisher/:id` - Atualiza um publisher específico. (Corpo da solicitação: `{ "name":STRING,"type":U8,"gender":STRING, "active": BOOLEAN }`)
 - POST: `/presentations` - Cria uma nova apresentação.  (Corpo da solicitação: `{ "length":U8, "gender":STRING }`)
 
 ## Pré-requisitos
