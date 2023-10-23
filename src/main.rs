@@ -129,10 +129,8 @@ async fn main() {
           
           let length = data.length;
           let gender = data.gender.to_string();
-
-          let response = services::create_presentations(length, gender);
           
-          match response {
+          match services::create_presentations(length, gender) {
             Ok(value) => {
               let response = Response::from_string(value.to_string());
               let _ = request.respond(response);

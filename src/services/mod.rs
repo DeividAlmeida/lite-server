@@ -114,8 +114,19 @@ fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Result<Publ
   .collect();
 
   connection::disconnect_sqlite(conn).unwrap();
+
+  match publishers.len() {
+    0 => return Err("Não há publishers cadastrados".into()),
+    _ => {}  
+  }
   
-  Ok(publishers[index].clone())
+  match &publishers.len() > &index {
+    true => Ok(publishers[index].clone()),
+    false => Ok(publishers[0].clone()),
+  }
+  
+
+  // Ok(Publisher { id: Some(5), name: "Teste".to_string(), r#type: 1, gender: "male".to_string(), amount: Some(2), active: Some(true), updated_at: None, created_at: None })
 
 }
 
@@ -178,10 +189,10 @@ fn update_publisher_amount(id:&str, amount:u32) -> Result<usize, Box<dyn Error>>
 }
 
 //Presentations
-pub fn create_presentations(length:u8, gender:String) -> Result<String, Box<dyn Error>> {
+pub fn create_presentations(mut length:u8, gender:String) -> Result<String, Box<dyn Error>> {
   let mut presentations : Vec<(Publisher, Publisher)> = vec![];
   
-  for _i in 0..length {
+  while 0 < length {
     
     let main = list_raffled_publisher(0, ">=".to_owned(), gender.clone()).unwrap();
     let helper = list_raffled_publisher(main.id.unwrap(), "<=".to_string(), main.gender.clone().to_string()).unwrap();
@@ -199,6 +210,8 @@ pub fn create_presentations(length:u8, gender:String) -> Result<String, Box<dyn 
       let new_helper_amount = sum_puplisher_amount(helper.clone());
       let _ = update_publisher_amount(&helper.id.unwrap().to_string(), new_helper_amount);
     });
+
+    length -= 1;
 
   }
 
