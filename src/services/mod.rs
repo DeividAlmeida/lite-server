@@ -91,7 +91,7 @@ pub fn get_publisher(id:&str) -> Result<String, Box<dyn Error>> {
 
 }
 
-fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Result<Publisher, Box<dyn Error>> {
+fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Option<Publisher> {
   
   let (index, item, order) = raffle();
 
@@ -114,20 +114,14 @@ fn list_raffled_publisher(id: u8, operator:String, gender:String) -> Result<Publ
   .collect();
 
   connection::disconnect_sqlite(conn).unwrap();
-
-  match publishers.len() {
-    0 => return Err("Não há publishers cadastrados".into()),
-    _ => {}  
+  
+  match &publishers.len() > &index && publishers.len() > 0 {
+    true => Some(publishers[index].clone()),
+    false => None,
   }
   
-  match &publishers.len() > &index {
-    true => Ok(publishers[index].clone()),
-    false => Ok(publishers[0].clone()),
-  }
-  
-
   // Ok(Publisher { id: Some(5), name: "Teste".to_string(), r#type: 1, gender: "male".to_string(), amount: Some(2), active: Some(true), updated_at: None, created_at: None })
-
+  
 }
 
 pub fn list_publisher() -> Result<String, Box<dyn Error>> {
@@ -193,14 +187,21 @@ pub fn create_presentations(mut length:u8, gender:String) -> Result<String, Box<
   let mut presentations : Vec<(Publisher, Publisher)> = vec![];
   
   while 0 < length {
-    
-    let main = list_raffled_publisher(0, ">=".to_owned(), gender.clone()).unwrap();
-    let helper = list_raffled_publisher(main.id.unwrap(), "<=".to_string(), main.gender.clone().to_string()).unwrap();
-    
+
+    let main = match list_raffled_publisher(0, ">=".to_owned(), gender.clone()) {
+      Some(publisher) => publisher.clone(),
+      None => break,
+    };
+
+    let helper =  match list_raffled_publisher(main.id.unwrap(), "<=".to_owned(), main.gender.clone().to_owned()) {
+        Some(publisher) => publisher.clone(),
+        None => break,
+    };
+
     presentations.push(
       (main.clone(), helper.clone())
     );
-
+    
     thread::spawn( move || {
       let new_main_amount = sum_puplisher_amount(main.clone());
       let _ = update_publisher_amount(&main.id.unwrap().to_string(), new_main_amount);
